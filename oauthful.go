@@ -16,19 +16,14 @@ type Client struct {
 	// REQUIRED. Url to make the oauth requests to
 	Url string
 
-	// REQUIRED, if the "redirect_uri" parameter was included in the
-	// authorization request as described in Section 4.1.1, and their
-	// values MUST be identical.
-	RedirectUri string
-
 	// REQUIRED. Decode Request to Struct
 	Decode func(req http.Request) (AuthorizationResponse, error)
 
 	// OPTIONALLY. Do a security check (res.State)
 	Verify func(res AuthorizationResponse) error
 
-	// REQUIRED. Add additional parameters to the OAuth Requests (id's and secret parameters)
-	AddSecrets func(*url.Values) error
+	// REQUIRED. Add additional parameters to the OAuth Requests (client_id, request_uri, etc)
+	AddParams func(*url.Values) error
 
 	// REQUIRED. Do something with the results
 	Done func(res AccessTokenResponse) error
@@ -54,16 +49,13 @@ func (c Client) Handle(req http.Request) error {
 	data := url.Values{}
 	data.Add("code", authRes.Code)
 	data.Add("grant_type", "authorization_code")
-	if c.RedirectUri != "" {
-		data.Add("redirect_uri", c.RedirectUri)
-	}
 
 	// Add secrets to data values
-	if c.AddSecrets == nil {
-		return AddSecretsFunctionRequired
+	if c.AddParams == nil {
+		return AddParamsFunctionRequired
 	}
 
-	err = c.AddSecrets(&data)
+	err = c.AddParams(&data)
 	if err != nil {
 		return err
 	}
