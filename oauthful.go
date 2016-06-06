@@ -9,40 +9,44 @@ import (
 	"strings"
 )
 
+type OAuthFlow interface {
+	// Decode Request to Struct
+	Decode(req http.Request) (AuthorizationResponse, error)
+
+	// Do a security check (res.State)
+	Verify(res AuthorizationResponse) error
+
+	// Add additional parameters to the OAuth Requests (client_id, request_uri, etc)
+	AddParams(*url.Values) error
+
+	// Do something with the results
+	Done(res AccessTokenResponse) error
+}
+
 type Client struct {
-	// REQUIRED.  Http Client Instance
+	// Http Client Instance
 	HttpClient *http.Client
 
-	// REQUIRED. Url to make the oauth requests to
+	// Url to make the oauth requests to
 	Url string
 
-	// REQUIRED. Decode Request to Struct
-	Decode func(req http.Request) (AuthorizationResponse, error)
-
-	// OPTIONALLY. Do a security check (res.State)
-	Verify func(res AuthorizationResponse) error
-
-	// REQUIRED. Add additional parameters to the OAuth Requests (client_id, request_uri, etc)
-	AddParams func(*url.Values) error
-
-	// REQUIRED. Do something with the results
-	Done func(res AccessTokenResponse) error
+	// Flow for the OAuth data
+	Flow OAuthFlow
 }
 
 func (c Client) Handle(req http.Request) error {
-	if c.Decode == nil {
-		return DecodeFunctionRequired
+	if c.Flow == nil {
+		return FlowRequired
 	}
 
-	authRes, err := c.Decode(req)
+	authRes, err := c.Flow.Decode(req)
 	if err != nil {
 		return err
 	}
 
-	if c.Verify != nil {
-		if err := c.Verify(authRes); err != nil {
-			return err
-		}
+	err = c.Flow.Verify(authRes)
+	if err != nil {
+		return err
 	}
 
 	// Create the data values
@@ -51,11 +55,7 @@ func (c Client) Handle(req http.Request) error {
 	data.Add("grant_type", "authorization_code")
 
 	// Add secrets to data values
-	if c.AddParams == nil {
-		return AddParamsFunctionRequired
-	}
-
-	err = c.AddParams(&data)
+	err = c.Flow.AddParams(&data)
 	if err != nil {
 		return err
 	}
@@ -91,9 +91,5 @@ func (c Client) Handle(req http.Request) error {
 		return errors.New(tokenRes.Error + "\n" + tokenRes.ErrorDescription + "\n" + tokenRes.ErrorUri)
 	}
 
-	if c.Done == nil {
-		return DoneFunctionRequired
-	}
-
-	return c.Done(tokenRes)
+	return c.Flow.Done(tokenRes)
 }
