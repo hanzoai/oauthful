@@ -9,15 +9,23 @@ import (
 	"strings"
 )
 
+func New(httpClient *http.Client, url string, flow OAuthFlow) *Client {
+	return &Client{
+		httpClient,
+		url,
+		flow,
+	}
+}
+
 type OAuthFlow interface {
 	// Decode Request to Struct
 	Decode(req http.Request) (AuthorizationResponse, error)
 
-	// Do a security check (res.State)
+	// Do a security check (usually involves res.State parameter passed by Authorization Request)
 	Verify(res AuthorizationResponse) error
 
-	// Add additional parameters to the OAuth Requests (client_id, request_uri, etc)
-	AddParams(*url.Values) error
+	// Add additional parameters to the OAuth Requests (client_id, client_secret, request_uri, etc)
+	AddParams(vals *url.Values) error
 
 	// Do something with the results
 	Done(res AccessTokenResponse) error
