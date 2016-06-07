@@ -11,19 +11,15 @@ import (
 type TestFlow struct {
 }
 
-func (t TestFlow) Decode(req http.Request) (AuthorizationResponse, error) {
-	return AuthorizationResponse{}, nil
+func (t TestFlow) Decode(req *http.Request) (*AuthorizationResponse, error) {
+	return &AuthorizationResponse{}, nil
 }
 
-func (t TestFlow) Verify(res AuthorizationResponse) error {
+func (t TestFlow) Verify(res *AuthorizationResponse) error {
 	return nil
 }
 
 func (t TestFlow) AddParams(vals *url.Values) error {
-	return nil
-}
-
-func (t TestFlow) Done(res AccessTokenResponse) error {
 	return nil
 }
 

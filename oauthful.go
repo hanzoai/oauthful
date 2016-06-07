@@ -19,16 +19,13 @@ func New(httpClient *http.Client, url string, flow OAuthFlow) *Client {
 
 type OAuthFlow interface {
 	// Decode Request to Struct
-	Decode(req http.Request) (AuthorizationResponse, error)
+	Decode(req *http.Request) (*AuthorizationResponse, error)
 
 	// Do a security check (usually involves res.State parameter passed by Authorization Request)
-	Verify(res AuthorizationResponse) error
+	Verify(res *AuthorizationResponse) error
 
 	// Add additional parameters to the OAuth Requests (client_id, client_secret, request_uri, etc)
 	AddParams(vals *url.Values) error
-
-	// Do something with the results
-	Done(res AccessTokenResponse) error
 }
 
 type Client struct {
@@ -42,19 +39,19 @@ type Client struct {
 	Flow OAuthFlow
 }
 
-func (c Client) Handle(req http.Request) error {
+func (c Client) Handle(req *http.Request) (*AccessTokenResponse, error) {
 	if c.Flow == nil {
-		return FlowRequired
+		return nil, FlowRequired
 	}
 
 	authRes, err := c.Flow.Decode(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = c.Flow.Verify(authRes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create the data values
@@ -65,39 +62,39 @@ func (c Client) Handle(req http.Request) error {
 	// Add secrets to data values
 	err = c.Flow.AddParams(&data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create Authorization Code Request
 	tokenReq, err := http.NewRequest("POST", c.Url, strings.NewReader(data.Encode()))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Issue Authorization Code Request
 	res, err := c.HttpClient.Do(tokenReq)
 	defer res.Body.Close()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Unmarshal JSON
-	tokenRes := AccessTokenResponse{}
+	tokenRes := &AccessTokenResponse{}
 
 	content, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = json.Unmarshal(content, &tokenRes)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// OAuth API returned an error
 	if tokenRes.Error != "" {
-		return errors.New(tokenRes.Error + "\n" + tokenRes.ErrorDescription + "\n" + tokenRes.ErrorUri)
+		return nil, errors.New(tokenRes.Error + "\n" + tokenRes.ErrorDescription + "\n" + tokenRes.ErrorUri)
 	}
 
-	return c.Flow.Done(tokenRes)
+	return tokenRes, nil
 }
