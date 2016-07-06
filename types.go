@@ -1,10 +1,5 @@
 package oauthful
 
-type AuthorizationResponse struct {
-	Code  string `json:"code"`
-	State string `json:"state"`
-}
-
 type AccessTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -12,6 +7,13 @@ type AccessTokenResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 
 	ErrorResponse
+}
+
+type AuthorizationResponse struct {
+	AccessTokenResponse
+
+	Code  string `json:"code"`
+	State string `json:"state"`
 }
 
 // type AccessTokenRequest struct {

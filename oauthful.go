@@ -54,41 +54,43 @@ func (c Client) Handle(req *http.Request) (*AccessTokenResponse, error) {
 		return nil, err
 	}
 
-	// Create the data values
-	data := url.Values{}
-	data.Add("code", authRes.Code)
-	data.Add("grant_type", "authorization_code")
-
-	// Add secrets to data values
-	err = c.Flow.AddParams(&data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create Authorization Code Request
-	tokenReq, err := http.NewRequest("POST", c.Url, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, err
-	}
-
-	// Issue Authorization Code Request
-	res, err := c.HttpClient.Do(tokenReq)
-	defer res.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-
 	// Unmarshal JSON
-	tokenRes := &AccessTokenResponse{}
+	tokenRes := &authRes.AccessTokenResponse
 
-	content, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(content, &tokenRes)
+	if authRes.AccessToken == "" || tokenRes.Error != "" {
+		// Create the data values
+		data := url.Values{}
+		data.Add("code", authRes.Code)
+		data.Add("grant_type", "authorization_code")
 
-	if err != nil {
-		return nil, err
+		// Add secrets to data values
+		err = c.Flow.AddParams(&data)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create Authorization Code Request
+		tokenReq, err := http.NewRequest("POST", c.Url, strings.NewReader(data.Encode()))
+		if err != nil {
+			return nil, err
+		}
+
+		// Issue Authorization Code Request
+		res, err := c.HttpClient.Do(tokenReq)
+		defer res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		content, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(content, &tokenRes)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// OAuth API returned an error
