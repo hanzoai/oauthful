@@ -77,10 +77,10 @@ func (c Client) Handle(req *http.Request) (*AccessTokenResponse, error) {
 
 		// Issue Authorization Code Request
 		res, err := c.HttpClient.Do(tokenReq)
-		defer res.Body.Close()
 		if err != nil {
 			return nil, err
 		}
+		defer res.Body.Close()
 
 		content, err := ioutil.ReadAll(res.Body)
 		if err != nil {
